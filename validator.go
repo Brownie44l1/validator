@@ -1,5 +1,7 @@
 package validator
 
+import "fmt"
+
 type Validator[T any] func(T) error
 
 func (v Validator[T]) Validate(value T) error {
@@ -37,6 +39,28 @@ func Not[T any](validator Validator[T]) Validator[T] {
 					},
 				},
 			}
+		}
+		return nil
+	}
+}
+
+func Each[T any](validator Validator[T]) Validator[[]T] {
+	return func(values []T) error {
+		var validationError ValidationError
+		for i, v := range values {
+			if err := validator.Validate(v); err != nil {
+				if ve, ok := err.(ValidationError); ok {
+					for j := range ve.FieldErrors {
+						ve.FieldErrors[j].FieldName = fmt.Sprintf("[%d]", i)
+					}
+					validationError.FieldErrors = append(validationError.FieldErrors, ve.FieldErrors...)
+				} else {
+					validationError.AddFieldError("", "", err.Error())
+				}
+			}
+		}
+		if !validationError.IsEmpty() {
+			return validationError
 		}
 		return nil
 	}

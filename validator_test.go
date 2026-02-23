@@ -139,3 +139,18 @@ func TestValidate_FieldNameStampedOnError(t *testing.T) {
     ve := err.(ValidationError)
     assert(t, ve.FieldErrors[0].FieldName == "Name", "expected field name to be stamped on error")
 }
+
+func TestEach_AllPass(t *testing.T) {
+    err := Each(MinLength(2)).Validate([]string{"hello", "world"})
+    assert(t, err == nil, "expected no error when all elements are valid")
+}
+
+func TestEach_CollectsErrors(t *testing.T) {
+    err := Each(MinLength(5)).Validate([]string{"hello", "hi", "world", "yo"})
+    assert(t, err != nil, "expected errors for invalid elements")
+
+    ve := err.(ValidationError)
+    assert(t, len(ve.FieldErrors) == 2, "expected 2 errors")
+    assert(t, ve.FieldErrors[0].FieldName == "[1]", "expected index 1 to fail")
+    assert(t, ve.FieldErrors[1].FieldName == "[3]", "expected index 3 to fail")
+}
