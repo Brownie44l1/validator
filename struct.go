@@ -5,7 +5,7 @@ type FieldValidator[S any] struct {
 	run  func(s S) []FieldError
 }
 
-func Field[S any, T any] (name string, getter func(S) T, validator Validator[T]) FieldValidator[S] {
+func Field[S any, T any](name string, getter func(S) T, validator Validator[T]) FieldValidator[S] {
 	return FieldValidator[S]{
 		name: name,
 		run: func(s S) []FieldError {
@@ -25,7 +25,7 @@ func Field[S any, T any] (name string, getter func(S) T, validator Validator[T])
 	}
 }
 
-func Validate[S any] (s S, fields...FieldValidator[S]) error {
+func Validate[S any](s S, fields ...FieldValidator[S]) error {
 	var result ValidationError
 	for _, field := range fields {
 		result.FieldErrors = append(result.FieldErrors, field.run(s)...)
@@ -34,4 +34,10 @@ func Validate[S any] (s S, fields...FieldValidator[S]) error {
 		return nil
 	}
 	return result
-} 
+}
+
+func ValidateNested[S any](fields ...FieldValidator[S]) Validator[S] {
+	return func(s S) error {
+		return Validate(s, fields...)
+	}
+}

@@ -154,3 +154,44 @@ func TestEach_CollectsErrors(t *testing.T) {
     assert(t, ve.FieldErrors[0].FieldName == "[1]", "expected index 1 to fail")
     assert(t, ve.FieldErrors[1].FieldName == "[3]", "expected index 3 to fail")
 }
+
+type TestAddress struct {
+    Street string
+    City   string
+}
+
+type TestOrder struct {
+    Name    string
+    Address TestAddress
+}
+
+func TestValidateNested_AllPass(t *testing.T) {
+    order := TestOrder{
+        Name:    "John",
+        Address: TestAddress{Street: "123 Main St", City: "Lagos"},
+    }
+    err := Validate(order,
+        Field("Name", func(o TestOrder) string { return o.Name }, Required()),
+        Field("Address", func(o TestOrder) TestAddress { return o.Address }, ValidateNested(
+            Field("Street", func(a TestAddress) string { return a.Street }, Required()),
+            Field("City", func(a TestAddress) string { return a.City }, Required()),
+        )),
+    )
+    assert(t, err == nil, "expected no error when all fields are valid")
+}
+
+func TestValidateNested_NestedFieldFails(t *testing.T) {
+    order := TestOrder{
+        Name:    "John",
+        Address: TestAddress{Street: "", City: "Lagos"},
+    }
+    err := Validate(order,
+        Field("Address", func(o TestOrder) TestAddress { return o.Address }, ValidateNested(
+            Field("Street", func(a TestAddress) string { return a.Street }, Required()),
+        )),
+    )
+    assert(t, err != nil, "expected error for empty street")
+
+    ve := err.(ValidationError)
+    assert(t, ve.FieldErrors[0].FieldName == "Address", "expected Address to fail")
+}
