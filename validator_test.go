@@ -102,3 +102,40 @@ func TestAnd_CollectsAllErrors(t *testing.T) {
     assert(t, ok, "expected error to be a ValidationError")
     assert(t, len(ve.FieldErrors) == 2, "expected 2 field errors, got a different number")
 }
+
+type TestUser struct {
+    Name string
+    Age  int
+}
+
+func TestValidate_AllPass(t *testing.T) {
+    user := TestUser{Name: "Alice", Age: 25}
+    err := Validate(user,
+        Field("Name", func(u TestUser) string { return u.Name }, And(Required(), MinLength(2))),
+        Field("Age", func(u TestUser) int { return u.Age }, And(Min(18), Max(120))),
+    )
+    assert(t, err == nil, "expected no error when all fields are valid")
+}
+
+func TestValidate_CollectsAllFieldErrors(t *testing.T) {
+    user := TestUser{Name: "", Age: 15}
+    err := Validate(user,
+        Field("Name", func(u TestUser) string { return u.Name }, Required()),
+        Field("Age", func(u TestUser) int { return u.Age }, Min(18)),
+    )
+    assert(t, err != nil, "expected errors for invalid fields")
+
+    ve := err.(ValidationError)
+    assert(t, len(ve.FieldErrors) == 2, "expected 2 field errors")
+    assert(t, ve.FieldErrors[0].FieldName == "Name", "expected first error to be on Name field")
+    assert(t, ve.FieldErrors[1].FieldName == "Age", "expected second error to be on Age field")
+}
+
+func TestValidate_FieldNameStampedOnError(t *testing.T) {
+    user := TestUser{Name: "", Age: 25}
+    err := Validate(user,
+        Field("Name", func(u TestUser) string { return u.Name }, Required()),
+    )
+    ve := err.(ValidationError)
+    assert(t, ve.FieldErrors[0].FieldName == "Name", "expected field name to be stamped on error")
+}
